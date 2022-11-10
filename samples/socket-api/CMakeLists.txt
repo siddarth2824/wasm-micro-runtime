@@ -101,6 +101,7 @@ ExternalProject_Add(wasm-app
                       multicast_server.wasm ${CMAKE_BINARY_DIR}
                       timeout_client.wasm ${CMAKE_BINARY_DIR}
                       timeout_server.wasm ${CMAKE_BINARY_DIR}
+                      curl_example.wasm ${CMAKE_BINARY_DIR}
 )
 
 add_executable(tcp_server ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/tcp_server.c)
