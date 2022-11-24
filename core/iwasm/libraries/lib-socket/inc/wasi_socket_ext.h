@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/socket.h>
 
 /*Be a part of <wasi/api.h>*/
 
@@ -116,6 +117,15 @@ typedef struct __wasi_addr_info_hints_t {
 #define SO_RCVTIMEO 20
 #define SO_SNDTIMEO 21
 
+#define PF_INET 2
+#define PF_INET6 30
+#define PF_UNSPEC 0
+#define POLLPRI 1
+#define HAVE_SOCKET 1
+#define	EAI_MEMORY	 6
+#define	EAI_NODATA	 7
+#define	AI_NUMERICHOST	0x00000004
+
 #define TCP_NODELAY 1
 #define TCP_KEEPIDLE 4
 #define TCP_KEEPINTVL 5
@@ -142,6 +152,14 @@ struct addrinfo {
     struct sockaddr *ai_addr; /* Socket address for socket.  */
     char *ai_canonname;       /* Canonical name for service location.  */
     struct addrinfo *ai_next; /* Pointer to next in list.  */
+};
+
+struct hostent {
+    char    *h_name;          /* Official name of host */
+    char    **h_aliases;      /* Alias list */
+    int     h_addrtype;       /* Host address type */
+    int     h_length;         /* Length of address */
+    char    **h_addr_list;    /* List of addresses */
 };
 
 #ifndef __WASI_RIGHTS_SOCK_ACCEPT
@@ -192,6 +210,9 @@ setsockopt(int sockfd, int level, int optname, const void *optval,
 int
 getaddrinfo(const char *node, const char *service, const struct addrinfo *hints,
             struct addrinfo **res);
+
+struct hostent *
+gethostbyname(const char *name);
 
 void
 freeaddrinfo(struct addrinfo *res);
@@ -476,14 +497,11 @@ __wasi_sock_listen(__wasi_fd_t fd, __wasi_size_t backlog)
 
 /**
  * Open a socket
-
  * The first argument to this function is a handle to an
  * address pool. The address pool determines what actions can
  * be performed and at which addresses they can be performed to.
-
  * The address pool cannot be re-assigned. You will need to close
  * the socket and open a new one to use a different address pool.
-
  * Note: This is similar to `socket` in POSIX using PF_INET
  */
 

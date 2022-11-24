@@ -4,6 +4,69 @@
 cmake_minimum_required(VERSION 2.8...3.18)
 project(socket_api_sample_wasm_app)
 
+message(CHECK_START "Detecting WASI-SDK at /opt/wasi-sdk")
+if(NOT (DEFINED WASI_SDK_DIR OR DEFINED CACHE{WASI_SDK_DIR}))
+  find_path(WASI_SDK_PARENT
+    wasi-sdk
+    PATHS /opt
+    NO_DEFAULT_PATH
+    NO_CMAKE_FIND_ROOT_PATH
+  )
+  if(WASI_SDK_PARENT)
+    set(WASI_SDK_DIR ${WASI_SDK_PARENT}/wasi-sdk)
+  endif()
+endif()
+if(WASI_SDK_DIR)
+  message(CHECK_PASS "found")
+else()
+  message(CHECK_FAIL "not found")
+endif()
+
+if(NOT EXISTS ${WASI_SDK_DIR})
+  message(FATAL_ERROR "Please install WASI-SDK under /opt/wasi-sdk")
+endif()
+
+message(CHECK_START "Detecting WASI_TOOLCHAIN_FILE at ${WASI_SDK_DIR}")
+find_file(WASI_TOOLCHAIN_FILE
+  wasi-sdk.cmake
+  PATHS "${WASI_SDK_DIR}/share/cmake"
+  NO_DEFAULT_PATH
+  NO_CMAKE_FIND_ROOT_PATH
+)
+if(WASI_TOOLCHAIN_FILE)
+  message(CHECK_PASS "found")
+else()
+  message(CHECK_FAIL "not found")
+endif()
+
+if(WASI_TOOLCHAIN_FILE-NOTFOUND)
+  message(FATAL_ERROR "Can not find wasi-sdk.cmake under ${WASI_SDK_DIR}")
+endif()
+
+message(CHECK_START "Detecting WASI_SYS_ROOT at ${WASI_SDK_DIR}")
+find_path(WASI_SYS_ROOT
+  wasi-sysroot
+  PATHS "${WASI_SDK_DIR}/share"
+  NO_DEFAULT_PATH
+  NO_CMAKE_FIND_ROOT_PATH
+)
+if(WASI_SYS_ROOT)
+  message(CHECK_PASS "found")
+  set(WASI_SYS_ROOT ${WASI_SYS_ROOT}/wasi-sysroot)
+else()
+  message(CHECK_FAIL "not found")
+endif()
+
+if(WASI_SYS_ROOT-NOTFOUND)
+  message(FATAL_ERROR "Can not find wasi-sysroot/ under ${WASI_SDK_DIR}")
+endif()
+
+message(STATUS "WASI_SDK_DIR is ${WASI_SDK_DIR}")
+message(STATUS "WASI_TOOLCHAIN_FILE is ${WASI_TOOLCHAIN_FILE}")
+message(STATUS "WASI_SYS_ROOT is ${WASI_SYS_ROOT}")
+
+
+include(CMakePrintHelpers)
 message(CHECK_START "Detecting WABT")
 if(NOT (DEFINED WABT_DIR OR DEFINED CACHE{WABT_DIR}))
   find_path(WABT_DIR
@@ -40,12 +103,60 @@ set(SRC ${CMAKE_CURRENT_SOURCE_DIR})
 include(${CMAKE_CURRENT_SOURCE_DIR}/../../../core/iwasm/libraries/lib-socket/lib_socket_wasi.cmake)
 
 #######################################
-## Build curl
+## Build OpenSSL
 #######################################
 
 include(ExternalProject)
 
-set(SRC ${CMAKE_CURRENT_SOURCE_DIR}) 
+# set(OPENSSL_LIB_TYPE STATIC)
+
+# set(OPENSSL_LIB_PREFIX ${CMAKE_${OPENSSL_LIB_TYPE}_LIBRARY_PREFIX})
+# set(OPENSSL_LIB_SUFFIX ${CMAKE_${OPENSSL_LIB_TYPE}_LIBRARY_SUFFIX})
+
+# if(WIN32)
+#     # This is hardcoded in OpenSSL's CMake files
+#     set(OPENSSL_LIB_PREFIX lib)
+# endif()
+
+# set(OPENSSL_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/thirdparty")
+
+# set(OPENSSL_CMAKE_ARGS
+#     # Some platforms have to set additional arguments (e.g., tvOS has to set 'OPENSSL_NO_ASYNC' otherwise it builds fine but fails during app validation)
+#     -DCMAKE_INSTALL_PREFIX=${OPENSSL_INSTALL_PREFIX}
+#     -DBUILD_SHARED_LIBS=OFF
+#     -DWASI_SDK_PREFIX=${WASI_SDK_DIR}
+#     -DCMAKE_TOOLCHAIN_FILE=${WASI_TOOLCHAIN_FILE}
+#     -DCMAKE_SYSROOT=${WASI_SYS_ROOT}
+# )
+
+# set(OPENSSL_INCLUDE_DIR ${OPENSSL_INSTALL_PREFIX}/include)
+
+# set(OPENSSL_SOURCE_DIR /Users/sidsur/siddarth_wamr/wasm-micro-runtime/samples/socket-api/wasm-src/openssl)
+# set(OPENSSL_FOUND TRUE)
+# set(OPENSSL_BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}/openssl_lib")
+# set(OPENSSL_CRYPTO_LIBRARY ${OPENSSL_INSTALL_PREFIX}/lib/${OPENSSL_LIB_PREFIX}crypto${OPENSSL_LIB_SUFFIX})
+# set(OPENSSL_SSL_LIBRARY ${OPENSSL_INSTALL_PREFIX}/lib/${OPENSSL_LIB_PREFIX}ssl${OPENSSL_LIB_SUFFIX})
+# set(OPENSSL_LIBRARIES "${OPENSSL_INSTALL_PREFIX}/lib/${OPENSSL_LIB_PREFIX}crypto${OPENSSL_LIB_SUFFIX}" "${OPENSSL_INSTALL_PREFIX}/lib/${OPENSSL_LIB_PREFIX}ssl${OPENSSL_LIB_SUFFIX}")
+
+# ExternalProject_Add(
+#     Libs_Openssl
+#     SOURCE_DIR "${OPENSSL_SOURCE_DIR}"
+#     BINARY_DIR "${OPENSSL_BIN_DIR}"
+#     INSTALL_DIR "${OPENSSL_INSTALL_PREFIX}"
+#     CONFIGURE_COMMAND ${CMAKE_COMMAND} ${IGNITE_EXTERNAL_PROJECTS_CMAKE_ARGS_WITH_HIDDEN_VISIBILITY} ${OPENSSL_CMAKE_ARGS} ${OPENSSL_SOURCE_DIR}
+#     BUILD_COMMAND "${CMAKE_COMMAND}" --build "${OPENSSL_BIN_DIR}"
+#     TEST_COMMAND ""
+#     INSTALL_COMMAND  "${CMAKE_COMMAND}" --build "${OPENSSL_BIN_DIR}" --target install
+#     BUILD_BYPRODUCTS ${OPENSSL_LIBRARIES}
+# )
+
+# file(MAKE_DIRECTORY ${OPENSSL_INCLUDE_DIR})
+
+#######################################
+## Build curl
+#######################################
+
+set(SRC ${CMAKE_CURRENT_SOURCE_DIR})
 
 # We're building curl ourselves
 set(CURL_LIB_TYPE STATIC)
@@ -62,6 +173,7 @@ set(CURL_CMAKE_ARGS
         -DBUILD_CURL_EXE=OFF
         -DBUILD_TESTING=OFF
         -DCURL_DISABLE_TESTS=ON
+        -DBUILD_TESTING=OFF
         -DHTTP_ONLY=ON
         -DENABLE_IPV6=OFF
         -DUSE_TLS_SRP=OFF
@@ -73,7 +185,6 @@ set(CURL_CMAKE_ARGS
         -DCMAKE_USE_LIBSSH2=OFF
         -DCMAKE_USE_OPENSSL=OFF
         -DCURL_USE_LIBSSH=OFF
-        -DCMAKE_USE_OPENSSL=OFF
         -DCURL_ENABLE_SSL=OFF
         -DUSE_OPENSSL=OFF
         -DCURL_USE_LIBPSL=OFF
@@ -82,6 +193,12 @@ set(CURL_CMAKE_ARGS
         -DHAVE_POLL_FINE_EXITCODE=0
         -DCURL_CA_BUNDLE=none
         -DCURL_CA_PATH=none
+        -DENABLE_ARES=OFF
+        -DENABLE_THREADED_RESOLVER=OFF
+        -DWASI_SDK_PREFIX=${WASI_SDK_DIR}
+        -DCMAKE_TOOLCHAIN_FILE=${WASI_TOOLCHAIN_FILE}
+        -DCMAKE_SYSROOT=${WASI_SYS_ROOT}
+        -DWAMR_BUILD_DEBUG_INTERP=1
         -DCMAKE_DEBUG_POSTFIX=
         ${PLATFORM_CURL_CMAKE_ARGS}
 )
@@ -101,7 +218,10 @@ ExternalProject_Add(
         BINARY_DIR "${CURL_BIN_DIR}"
         INSTALL_DIR "${CURL_INSTALL_DIR}"
         LIST_SEPARATOR |
-        CONFIGURE_COMMAND ${CMAKE_COMMAND} ${CURL_CMAKE_ARGS} ${CMAKE_CURRENT_SOURCE_DIR}/curl
+        CONFIGURE_COMMAND ${CMAKE_COMMAND} -E copy
+                            /Users/sidsur/siddarth_wamr/wasm-micro-runtime/wamr-sdk/app/libc-builtin-sysroot/include/pthread.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/inc
+                          && ${CMAKE_COMMAND} ${CURL_CMAKE_ARGS} ${CMAKE_CURRENT_SOURCE_DIR}/curl
         BUILD_COMMAND "${CMAKE_COMMAND}" --build "${CURL_BIN_DIR}"
         TEST_COMMAND ""
         INSTALL_COMMAND  "${CMAKE_COMMAND}" --build "${CURL_BIN_DIR}" --target install
@@ -111,6 +231,13 @@ ExternalProject_Add(
 file(MAKE_DIRECTORY ${CURL_INCLUDE})
 
 set(CURL_INCLUDE_DIR ${CURL_INSTALL_DIR}/include)
+add_library(libcurltargettag OBJECT ${CURL_INSTALL_DIR}/lib/libcurl.a)
+set_target_properties(libcurltargettag PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CURL_INCLUDE}
+                                         IMPORTED_LINK_LANGUAGES "C"
+                                         IMPORTED_LOCATION ${CURL_LIBRARY})
+set_target_properties(libcurltargettag PROPERTIES INTERFACE_COMPILE_DEFINITIONS CURL_STATICLIB)
+add_dependencies(libcurltargettag Libs_Curl)
+
 
 message("CURL_LIBRARY=${CURL_LIBRARY}")
 message("CURL_INCLUDE=${CURL_INCLUDE}")
@@ -119,7 +246,6 @@ message("CURL_INCLUDE=${CURL_INCLUDE}")
 ## End build curl
 #######################################
 
-
 function(COMPILE_WITH_CLANG SOURCE_FILE)
   get_filename_component(FILE_NAME ${SOURCE_FILE} NAME_WLE)
 
@@ -127,12 +253,16 @@ function(COMPILE_WITH_CLANG SOURCE_FILE)
 
   set(MAIN_TARGET_NAME MODULE_${FILE_NAME})
 
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -z stack-size=10000000")
   add_executable(${MAIN_TARGET_NAME} ${SOURCE_FILE})
   set_target_properties(${MAIN_TARGET_NAME} PROPERTIES OUTPUT_NAME ${WASM_MODULE})
   include_directories(${CURL_INCLUDE_DIR})
   target_include_directories(${MAIN_TARGET_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
   target_compile_options(${MAIN_TARGET_NAME} INTERFACE -pthread)
-  target_link_libraries(${MAIN_TARGET_NAME} socket_wasi_ext ${CURL_LIBRARIES})
+  target_link_libraries(${MAIN_TARGET_NAME} socket_wasi_ext ${CURL_INSTALL_DIR}/lib/libcurl.a)
+
+ 
+
   target_link_options(${MAIN_TARGET_NAME} PRIVATE
     LINKER:--export=__heap_base
     LINKER:--export=__data_end
@@ -140,6 +270,8 @@ function(COMPILE_WITH_CLANG SOURCE_FILE)
     LINKER:--no-check-features
     LINKER:--allow-undefined
   )
+
+  message(STATUS "Linking ${CURL_INCLUDE_DIR} ${CURL_LIBRARIES}")
 
   if(EXISTS ${WASM_OBJDUMP})
     message(STATUS "Dumping ${WASM_MODULE}...")
@@ -158,15 +290,4 @@ function(COMPILE_WITH_CLANG SOURCE_FILE)
   endif()
 endfunction()
 
-compile_with_clang(tcp_server.c)
-compile_with_clang(tcp_client.c)
-compile_with_clang(send_recv.c)
-compile_with_clang(addr_resolve.c)
-compile_with_clang(socket_opts.c)
-compile_with_clang(udp_client.c)
-compile_with_clang(udp_server.c)
-compile_with_clang(multicast_client.c)
-compile_with_clang(multicast_server.c)
-compile_with_clang(timeout_client.c)
-compile_with_clang(timeout_server.c)
 compile_with_clang(curl_example.c)

@@ -3,10 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
+#include <arpa/inet.h>
 #include <assert.h>
 #include <errno.h>
 #include <netinet/in.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <wasi/api.h>
@@ -179,17 +181,19 @@ connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 {
     __wasi_addr_t wasi_addr;
     __wasi_errno_t error;
-
+    printf("WAMR connect function is called\n");
     memset(&wasi_addr, 0, sizeof(wasi_addr));
 
     if (NULL == addr) {
         HANDLE_ERROR(__WASI_ERRNO_INVAL)
     }
-
+    printf("sockfd: %d\n", sockfd);
     error = sockaddr_to_wasi_addr(addr, addrlen, &wasi_addr);
+    printf("sockaddr to wasi addr err: %d\n", error);
     HANDLE_ERROR(error)
 
     error = __wasi_sock_connect(sockfd, &wasi_addr);
+    printf("wasi connect err: %d\n", error);
     HANDLE_ERROR(error)
 
     return __WASI_ERRNO_SUCCESS;
@@ -481,10 +485,81 @@ wasi_addr_info_to_addr_info(const __wasi_addr_info_t *addr_info,
                                  &ai->ai_addrlen); // TODO err handling
 }
 
+struct hostent *
+gethostbyname(const char *name)
+{
+    struct addrinfo hints, *res, *result, *addr_count;
+    struct hostent *host_res = NULL;
+    int errcode;
+    char addrstr[100];
+    void *ptr;
+
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+
+    errcode = getaddrinfo(name, NULL, &hints, &result);
+    if (errcode != 0) 
+    {
+        return host_res;
+    }
+
+    addr_count = result;
+    int num_of_addr = 0;
+
+    while (addr_count)
+    {
+        num_of_addr += 1;
+        addr_count = addr_count->ai_next;
+    }
+
+    host_res = (struct hostent *)malloc(sizeof(struct hostent));
+    host_res->h_addr_list = (char **)malloc(num_of_addr*sizeof(char));
+    int addr_idx = 0;
+    res = result;
+
+    while (res) 
+    {
+        switch (res->ai_family) 
+        {
+            case AF_INET:
+                ptr = &((struct sockaddr_in *)res->ai_addr)->sin_addr;
+                break;
+            case AF_INET6:
+                ptr = &((struct sockaddr_in6 *)res->ai_addr)->sin6_addr;
+                break;
+            default:
+                printf("Unsupported address family: %d\n", res->ai_family);
+                continue;
+        }
+        inet_ntop(res->ai_family, ptr, addrstr, 100);
+        host_res->h_addr_list[addr_idx] = malloc(100*sizeof(char));
+        memcpy(host_res->h_addr_list[addr_idx], addrstr, strlen(addrstr)+1);
+        res = res->ai_next;
+        addr_idx += 1;
+    }
+
+    host_res->h_name = malloc(sizeof(char)*strlen(name)+1);
+    memcpy(host_res->h_name, name, strlen(name)+1);
+    host_res->h_aliases = NULL;
+    host_res->h_addrtype = AF_INET;
+    host_res->h_length = sizeof(host_res->h_addr_list);
+    if(host_res == NULL)
+    {
+        printf("host_res is null\n");
+    }
+    else
+    {
+        printf("host_res is not null\n");
+    }
+    return host_res;
+}
+
 int
 getaddrinfo(const char *node, const char *service, const struct addrinfo *hints,
             struct addrinfo **res)
 {
+    printf("WAMR getaddrinfo called\n");
     __wasi_addr_info_hints_t wasi_hints;
     __wasi_addr_info_t *addr_info = NULL;
     __wasi_size_t addr_info_size, i;
@@ -493,6 +568,7 @@ getaddrinfo(const char *node, const char *service, const struct addrinfo *hints,
     struct aibuf *aibuf_res;
 
     error = addrinfo_hints_to_wasi_hints(hints, &wasi_hints);
+    printf("error 1 %d\n", error);
     HANDLE_ERROR(error)
 
     do {
@@ -504,12 +580,14 @@ getaddrinfo(const char *node, const char *service, const struct addrinfo *hints,
                                                  * sizeof(__wasi_addr_info_t));
 
         if (!addr_info) {
+            printf("error 2\n");
             HANDLE_ERROR(__WASI_ERRNO_NOMEM)
         }
 
         error = __wasi_sock_addr_resolve(node, service == NULL ? "" : service,
                                          &wasi_hints, addr_info, addr_info_size,
                                          &max_info_size);
+        printf("error 3 %d\n", error);
         if (error != __WASI_ERRNO_SUCCESS) {
             free(addr_info);
             HANDLE_ERROR(error);

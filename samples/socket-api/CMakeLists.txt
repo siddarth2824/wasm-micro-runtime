@@ -90,43 +90,32 @@ ExternalProject_Add(wasm-app
                       ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src
   BUILD_COMMAND     ${CMAKE_COMMAND} --build .
   INSTALL_COMMAND   ${CMAKE_COMMAND} -E copy
-                      addr_resolve.wasm ${CMAKE_BINARY_DIR}
-                      tcp_client.wasm ${CMAKE_BINARY_DIR}
-                      tcp_server.wasm ${CMAKE_BINARY_DIR}
-                      send_recv.wasm ${CMAKE_BINARY_DIR}
-                      socket_opts.wasm ${CMAKE_BINARY_DIR}
-                      udp_client.wasm ${CMAKE_BINARY_DIR}
-                      udp_server.wasm ${CMAKE_BINARY_DIR}
-                      multicast_client.wasm ${CMAKE_BINARY_DIR}
-                      multicast_server.wasm ${CMAKE_BINARY_DIR}
-                      timeout_client.wasm ${CMAKE_BINARY_DIR}
-                      timeout_server.wasm ${CMAKE_BINARY_DIR}
                       curl_example.wasm ${CMAKE_BINARY_DIR}
 )
 
-add_executable(tcp_server ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/tcp_server.c)
-target_link_libraries(tcp_server pthread)
+# add_executable(tcp_server ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/tcp_server.c)
+# target_link_libraries(tcp_server pthread)
 
-add_executable(tcp_client ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/tcp_client.c)
+# add_executable(tcp_client ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/tcp_client.c)
 
-add_executable(send_recv ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/send_recv.c)
-target_link_libraries(send_recv pthread)
+# add_executable(send_recv ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/send_recv.c)
+# target_link_libraries(send_recv pthread)
 
-add_executable(addr_resolve ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/addr_resolve.c)
+# add_executable(addr_resolve ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/addr_resolve.c)
 
-add_executable(socket_opts ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/socket_opts.c)
+# add_executable(socket_opts ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/socket_opts.c)
 
-add_executable(udp_client ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/udp_client.c)
+# add_executable(udp_client ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/udp_client.c)
 
-add_executable(udp_server ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/udp_server.c)
+# add_executable(udp_server ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/udp_server.c)
 
-add_executable(multicast_client ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/multicast_client.c)
+# add_executable(multicast_client ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/multicast_client.c)
 
-add_executable(multicast_server ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/multicast_server.c)
+# add_executable(multicast_server ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/multicast_server.c)
 
-add_executable(timeout_client ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/timeout_client.c)
+# add_executable(timeout_client ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/timeout_client.c)
 
-add_executable(timeout_server ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/timeout_server.c)
+# add_executable(timeout_server ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/timeout_server.c)
 
 ############################################
 ## Build iwasm with wasi and pthread support
@@ -162,7 +151,7 @@ if (NOT DEFINED WAMR_BUILD_TARGET)
 endif ()
 
 if (NOT CMAKE_BUILD_TYPE)
-  set (CMAKE_BUILD_TYPE Release)
+  set (CMAKE_BUILD_TYPE Debug)
 endif ()
 
 set(WAMR_BUILD_INTERP 1)
@@ -172,6 +161,7 @@ set(WAMR_BUILD_JIT 0)
 set(WAMR_BUILD_LIBC_BUILTIN 1)
 set(WAMR_BUILD_LIBC_WASI 1)
 set(WAMR_BUILD_LIB_PTHREAD 1)
+set(WAMR_BUILD_LIB_PTHREAD_SEMAPHORE 1)
 
 # compiling and linking flags
 if (NOT (CMAKE_C_COMPILER MATCHES ".*clang.*" OR CMAKE_C_COMPILER_ID MATCHES ".*Clang"))
